@@ -1,4 +1,4 @@
-#!/bin/basha
+#!/bin/bash
 
 delete_servers() {
     nametag=$1
