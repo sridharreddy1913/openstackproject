@@ -242,7 +242,7 @@ if (("$no_of_nodes" > "$dev_count")); then
         done
 
         #echo "$(date) Server $nodes_name is active."
-    # Proceed with the rest of your code
+    # Proceed with the restt of your code
     done
     dev_config $sshk
 elif (("$no_of_nodes" < "$dev_count")); then
