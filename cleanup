@@ -1,0 +1,154 @@
+#!/bin/bash
+
+delete_servers() {
+    nametag=$1
+    server_ids=$(openstack server list --name "$nametag" -c ID -f value)
+    a=$(echo "$server_ids" | wc -l)
+    if [ -n "$server_ids" ]; then
+        echo "$(date) There are $a servers in total"
+        echo "$(date) Deleting servers..."
+        for server_id in $server_ids; do
+            openstack server delete $server_id
+        done
+        echo "$(date) Deleted $a servers successfully"
+    else
+        echo "$(date) No Servers are present to delete"
+    fi
+}
+
+delete_floating_ips() {
+    floating_ip_ids=$(openstack floating ip list -c ID -f value)
+    b=$(echo "$floating_ip_ids" | wc -l)
+    if [ -n "$floating_ip_ids" ]; then
+        for floating_ip_id in $floating_ip_ids; do
+            echo "$(date) Deleting floating IP"
+            openstack floating ip delete "$floating_ip_id"
+        done
+        echo "$(date) Deleted $b floating IPs successfully"
+    else
+        echo "$(date) Floating IPs not present."
+    fi
+}
+
+remove_router_from_subnet() {
+    ROUTER_NAME=$1
+    ROUTER_ID=$(openstack router list | grep "${ROUTER_NAME}" | awk '{print $2}')
+    if [ -n "${ROUTER_ID}" ]; then
+    # If router found, display the ID
+        echo "$(date) Router '${ROUTER_NAME}' found with ID: ${ROUTER_ID}"
+        SUBNET_ID=$(openstack router show "${ROUTER_ID}" -f json | jq -r '.interfaces_info[].subnet_id')
+        openstack router remove subnet "${ROUTER_ID}" "${SUBNET_ID}"
+	echo "$(date) disconnected router from subnet"
+    else
+    # If router not found, display "not present"
+        echo "$(date) Router '${ROUTER_NAME}' not present."
+    fi
+}
+
+delete_routers() {
+    # Set the router name you want to delete
+    ROUTER_NAME=$1
+    # Get the router list and filter by name using 'grep'
+    ROUTER_ID=$(openstack router list | grep -w "${ROUTER_NAME}" | awk '{print $2}')
+    # Check if the router with the specified name was found
+    if [ -n "${ROUTER_ID}" ]; then
+        # If router found, delete it
+	echo "$(date) deleting router"
+        openstack router delete "${ROUTER_ID}"
+        echo "$(date) Router '${ROUTER_NAME}' deleted successfully."
+    else
+        # If router not found, display "not present"
+        echo "$(date) Router '${ROUTER_NAME}' not present."
+    fi
+}
+
+delete_subnets() {
+    # Set the subnet name you want to delete
+    SUBNET_NAME=$1
+    # Get the subnet list and filter by name using 'grep'
+    SUBNET_ID=$(openstack subnet list | grep -w "${SUBNET_NAME}" | awk '{print $2}')
+    # Check if the subnet with the specified name was found
+    if [ -n "${SUBNET_ID}" ]; then
+	echo "$(date) deleting subnet"
+        # If subnet found, delete it
+        openstack subnet delete "${SUBNET_ID}"
+        echo "$(date) Subnet '${SUBNET_NAME}' deleted successfully."
+    else
+        # If subnet not found, display "not present"
+        echo "$(date) Subnet '${SUBNET_NAME}' not present."
+    fi
+
+}
+
+delete_networks() {
+    nametag=$1
+    network_ids=$(openstack network list --tags "$nametag" -c ID -f value)
+    if [ -n "$network_ids" ]; then
+        for network_id in $network_ids; do
+            openstack network delete "$network_id"
+        done
+        echo "$(date) Deleted network"
+    else
+        echo "Networks not present."
+    fi
+}
+
+delete_security_groups() {
+    security_group_name=$1
+    delete=$(openstack security group delete $security_group_name)
+    echo "$(date) Security group deleted"
+}
+
+delete_keys() {
+    keypair_name=$1
+    key_name=$(openstack keypair show $keypair_name)
+    if [ -n "$key_name" ]; then
+        echo "$(date) Keypair $keypair_name exists."
+        del=$(openstack keypair delete $keypair_name)
+        echo "$(date) Keypair $keypair_name deleted."
+    else
+        echo "$(date) Keypair $keypair_name does not exist."
+    fi
+}
+
+openrc=$1
+nametag=$2
+sshkey=$3
+no_of_nodes=3
+source "$openrc"
+echo "$(date) Initialising Cleanup"
+net_name="$2_network"
+snet_name="$2_subnet"
+key_name="$2_key"
+routername="$2_router"
+secgroupname="$2_securitygroup"
+proxy="$2_HAproxy"
+proxy2="$2_HAproxy2"
+bastionNSO="$2_bastion"
+nodes="$2_dev"
+viprt="$2_vip" #virtual ip port
+sshconfig="$2_config"
+knownhosts="known_hosts"
+hostsfile="hosts"
+
+test -f "$sshconfig" && rm "$sshconfig"
+test -f "$knownhosts" && rm "$knownhosts"
+test -f "$hostsfile" && rm "$hostsfile"
+test -f "floating1" && rm "floating1"
+test -f "floating2" && rm "floating2"
+test -f "vipaddr" && rm "vipaddr"
+test -f "unused" && rm "unused"
+test -f "node_count.txt" && rm "node_count.txt"
+
+delete_servers $nametag
+delete_floating_ips
+remove_router_from_subnet $routername
+delete_routers $routername
+echo "$(date) deleting virtual port"
+openstack port delete "$viprt"
+echo "$(date) Deleted virtual port $viprt"
+delete_subnets $snet_name
+delete_networks $nametag
+delete_security_groups $secgroupname
+del=$(openstack keypair delete $key_name)
+echo "$(date) Keypair $keypair_name deleted."
