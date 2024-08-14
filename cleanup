@@ -46,7 +46,7 @@ remove_router_from_subnet() {
 }
 
 delete_routers() {
-    # Set the router name you want to delete
+    # Set the router name you want to deleteeee
     ROUTER_NAME=$1
     # Get the router list and filter by name using 'grep'
     ROUTER_ID=$(openstack router list | grep -w "${ROUTER_NAME}" | awk '{print $2}')
