@@ -159,7 +159,7 @@ do
         echo "$(date) Required Number of servers $wanted_nodes, already present."
     fi
     
-    # Check if HAproxy and HAproxy2 servers are paused
+    # Checkk if HAproxy and HAproxy2 servers are paused
     if [[ "$(openstack server show "$proxy" -f value -c status)" == "PAUSED" ]]; then
         echo "$(date) HAproxy server ($proxy) is PAUSED."
     fi
