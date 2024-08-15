@@ -4,7 +4,7 @@
   become: yes
   become_method: sudo
   tasks:
-    - name: updating all hosts 
+    - name: Updating all hosts 
       apt:
         update_cache: yes
 
@@ -13,15 +13,14 @@
   become_method: sudo
   gather_facts: true
   tasks:
-    - name: update all webservers 
+    - name: Update apt cache
       apt:
-        update_cache: true
+        update_cache: yes
 
     - name: Installing nginx
       apt:
         name: nginx
         state: latest
-        update_cache: true
 
     - name: pip install
       apt:
@@ -35,10 +34,19 @@
         name: flask
         state: latest
 
+    - name: Add Nginx PPA
+      apt_repository:
+        repo: ppa:nginx/stable
+        state: present
 
-    - name: apt update
+    - name: Update apt cache
       apt:
-        update_cache: true
+        update_cache: yes
+
+    - name: Installing nginx
+      apt:
+        name: nginx
+        state: latest
 
     - name: Installing flask service deployment
       pip:
@@ -46,46 +54,39 @@
         name: gunicorn
         state: latest
 
-    - name: apt update
-      apt:
-        update_cache: true
-
-    - name: copy flask app 
+    - name: Copy flask app 
       copy:
         src: /$PWD/service.py
         dest: /home/ubuntu/app.py
         owner: ubuntu
         mode: '0644'
 
-    - name: deploying Flask application 
+    - name: Deploying Flask application 
       shell: gunicorn -w 2 -D -b 0.0.0.0:5000 app:app
 
-    - name: install snmpd 
+    - name: Install snmpd 
       apt:
         name: snmpd
         state: latest
         update_cache: true
 
-    - name: configure snmpd
+    - name: Configure snmpd
       template:
-              src: snmpd.conf
-              dest: /etc/snmp/snmpd.conf
+        src: snmpd.conf
+        dest: /etc/snmp/snmpd.conf
 
-    - name: restarting snmpd
+    - name: Restart snmpd
       service:
-            name: snmpd
-            state: restarted
+        name: snmpd
+        state: restarted
 
-    - name: apt update
-      apt:
-        update_cache: true
 - hosts: all
   gather_facts: true
 
 - hosts: HAproxy 
   become: true
   tasks:
-    - name: update HAproxy
+    - name: Update HAproxy
       apt:
         update_cache: yes
 
@@ -103,49 +104,39 @@
     
     - name: Configure haproxy
       template:
-             src: /$PWD/haproxy.cfg.j2
-             dest: /etc/haproxy/haproxy.cfg
+        src: /$PWD/haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
 
     - name: Restart haproxy
       service:
         name: haproxy
         state: restarted
 
-    - name: apt update
-      apt:
-        update_cache: true
-
-    - name: install nginx, snmp, snmp-mibs-downloader
+    - name: Install nginx, snmp, snmp-mibs-downloader
       apt: 
         update_cache: yes
-        name: [ 'nginx', 'snmp', 'snmp-mibs-downloader' ] 
+        name: ['nginx', 'snmp', 'snmp-mibs-downloader']
         state: latest
 
-    - name: configure nginx udp port
+    - name: Configure nginx udp port
       template:
-             src: nginixport.conf
-             dest: /etc/nginx/sites-available/default
+        src: nginixport.conf
+        dest: /etc/nginx/sites-available/default
 
-    - name: configure udp for loadbalancing
+    - name: Configure udp for loadbalancing
       template:
-             src: nginix.conf.j2
-             dest: /etc/nginx/nginx.conf
+        src: nginix.conf.j2
+        dest: /etc/nginx/nginx.conf
 
     - name: Restart Nginx
       service:
-            name: nginx
-            state: restarted
-    - name: apt update
-      apt:
-        update_cache: true
+        name: nginx
+        state: restarted
 
     - name: Restart keepalived
       service:
-            name: keepalived
-            state: restarted
-    - name: apt update
-      apt:
-        update_cache: true
+        name: keepalived
+        state: restarted
 
 - hosts: primary_proxy
   become: yes
@@ -155,11 +146,10 @@
     node_priority: 101
     virtual_ip: "{{ lookup('file', './vipaddr') }}"
   tasks:
-    - name: configure keepalived
+    - name: Configure keepalived
       template:
         src: keepalived.conf.j2
         dest: /etc/keepalived/keepalived.conf
-
 
 - hosts: backup_proxy
   become: yes
@@ -169,7 +159,7 @@
     node_priority: 100
     virtual_ip: "{{ lookup('file', './vipaddr') }}"
   tasks:
-    - name: configure keepalived
+    - name: Configure keepalived
       template:
         src: keepalived.conf.j2
         dest: /etc/keepalived/keepalived.conf
@@ -183,12 +173,12 @@
         name: keepalived
         enabled: yes
 
-    - name: restart keepalived
+    - name: Restart keepalived
       service:
         name: keepalived
         state: restarted
         
-    - name: start keepalived
+    - name: Start keepalived
       service:
         name: keepalived
         state: started
@@ -198,13 +188,13 @@
   gather_facts: yes
   become: true
   tasks:
-    - name : sudo wait
+    - name: Sudo wait
       become: yes
       shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
  
-    - name: gather server ip addresses
+    - name: Gather server IP addresses
       setup:
-          filter: ansible_default_ipv4.address     
+        filter: ansible_default_ipv4.address     
 
     - name: Initializing Requirements
       copy:
@@ -215,7 +205,7 @@
     - name: Install and Configure Requirements
       command: bash bastionconf.sh
 
-    - name: copy prometheus.yml
+    - name: Copy prometheus.yml
       template:
         src: "prometheus.yml.j2"
         dest: "/etc/prometheus/prometheus.yml"
@@ -225,20 +215,16 @@
         name: prometheus
         state: restarted 
 
-    
-
-    
 - name: Install Node exporter on nodes
   hosts: webservers
   gather_facts: yes
   become: true
   tasks:
-  
-    - name: gather server ip addresses
+    - name: Gather server IP addresses
       setup:
-            filter: ansible_default_ipv4.address
+        filter: ansible_default_ipv4.address
 
-    - name : sudo wait
+    - name: Sudo wait
       become: yes
       shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
 
@@ -250,6 +236,3 @@
     
     - name: Install and Configure Requirements
       command: bash node_exporter.sh
-
-
-
